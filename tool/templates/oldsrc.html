@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% block title %} tool {% endblock %}
+{% block style %}
+{{block.super}}
+h1 { text-align:center }
+{% endblock %}
+{% block content %}
+{% load static%}
+<h1 > uploadplaylist</h1>
+<div id="skPlayer" ></div>
+<script type="text/javascript" src="{% static 'common/skPlayer.min.js' %}" ></script>
+
+<script>
+        var player = new skPlayer({
+            autoplay: true,
+            music: {
+                type: 'file',
+                source: [{name:"i am women",author:"tianwei",src:"/static/1.mp3"},
+                        {name:"我相信",author:"tianwei",src:"/static/2.mp3"},
+                        {name:"有点甜",author:"tianwei",src:"/static/6.mp3"}
+                        ]
+            }
+        });
+
+    </script>
+{% endblock %}

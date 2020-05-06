@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+{% block title %} tool {% endblock %}
+{% block style %}
+{{block.super}}
+h1 { text-align:center }
+{% endblock %}
+{% block content %}
+<h1 > tool</h1>
+
+<textarea id="tool-log" cols="100" rows="20"></textarea><br>
+    <input id="info-input" type="text" size="100"><br>
+    <input id="info-submit" type="button" value="Send">
+
+    <script>
+        //const roomName = JSON.parse(document.getElementById('room-name').textContent);
+
+        const toolSocket = new WebSocket(
+            'ws://'
+            + window.location.host
+            + '/tool/'
+        );
+
+
+        toolSocket.onopen=function(){
+            window.alert(" you have connected via websocket");
+            console.info("yeah")
+        };
+
+        toolSocket.onclose=function(e){
+            window.alert("websocket connection closed");
+        };
+
+        toolSocket.onerror=function(){
+            window.alert("socket closed unexpectedly");
+        };
+
+        toolSocket.onmessage=function(e){
+            console.debug(e);
+            document.querySelector("#tool-log").value+=(e.data+'\n');
+        };
+
+
+
+
+
+
+        document.querySelector('#info-submit').onclick=function () {
+            const info_dom = document.querySelector('#info-input');
+            const info=info_dom.value;
+            toolSocket.send(info);
+            info_dom.value='';
+        }
+
+    </script>
+
+{% endblock %}

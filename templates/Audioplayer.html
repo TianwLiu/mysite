@@ -1,0 +1,15 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Audio Playing....</title>
+</head>
+<body>
+{% load static%}
+<audio controls>
+    <source src="{% static file_name %}" type="{{file_type}}" />
+</audio>
+
+<img src="{% static 'test.jpeg' %}" />
+</body>
+</html>

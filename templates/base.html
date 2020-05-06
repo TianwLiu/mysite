@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>{% block title %}{% endblock %}</title>
+
+    <style>
+        ul.navigation {
+
+            position: fixed;
+            bottom: 0;
+            width: 100%;
+            list-style-type: none;
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            background-color: #333;
+        }
+        li.navigation{
+            float: left;
+            border-right: 1px solid #bbb;
+        }
+        li a.navigation {
+            display: block;
+            color: white;
+            text-align: center;
+            padding: 14px 16px;
+            text-decoration: none;
+        }
+        li a.navigation:hover {
+            background-color: #111;
+        }
+    </style>
+    <style>{% block style %}{% endblock %}</style>
+</head>
+<body>
+
+<ul class="navigation">
+    <li class="navigation"> <a class="navigation" href="/player/">播放器</a> </li>
+    <li class="navigation"><a class="navigation" href="/listmanager/">歌单管理器</a> </li>
+    <li class="navigation"><a class="navigation" href="/searchforsong/" >搜索歌曲</a></li>
+    <li class="navigation"><a class="navigation" href="/downloadmanager/">下载管理</a> </li>
+    <li class="navigation"><a class="navigation" href="/uploadsonglist/">上传歌单</a> </li>
+    <li class="navigation"><a class="navigation" href="/tool/">工具</a> </li>
+</ul>
+{% block content %}{% endblock %}
+</body>
+</html>

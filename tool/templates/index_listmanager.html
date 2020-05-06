@@ -1,0 +1,81 @@
+{% extends "base.html" %}
+{% block title %} tool {% endblock %}
+{% block style %}
+{{block.super}}
+h1 { text-align:center }
+{% endblock %}
+{% block content %}
+<h1 > uploadplaylist</h1>
+<label>请输入要设置URL的歌曲的id</label> <input id="song_id" /><button  type="submit" onclick="setUrl()">submit</button>
+歌单如下：
+<div style="overflow: auto;height:300px;width: 400px" >
+<ul id="songlist"  >
+
+
+</ul>
+</div>
+    <script>
+        //const roomName = JSON.parse(document.getElementById('room-name').textContent);
+
+        const toolSocket = new WebSocket(
+            'ws://'
+            + window.location.host
+            + '/listmanager/'
+        );
+
+
+        toolSocket.onopen=function(){
+            window.alert(" you have connected via websocket");
+            console.info("yeah")
+
+        };
+
+        toolSocket.onclose=function(e){
+            window.alert("websocket connection closed");
+        };
+
+        toolSocket.onerror=function(){
+            window.alert("socket closed unexpectedly");
+        };
+
+        toolSocket.onmessage=function(e){
+            console.debug(e);
+            var songlist=document.querySelector("#songlist");
+            var songs=JSON.parse(e.data);
+
+
+
+            for(var i in songs){
+                var li =document.createElement('li');
+                //li.appendChild(songs[i].fields.song_title);
+                li.innerText=songs[i].fields.id_list+" "+songs[i].fields.song_title+" - "+songs[i].fields.singer;
+                li.setAttribute('style','')
+                songlist.appendChild(li);
+            }
+
+        };
+
+
+        function setUrl(song_id) {
+            if(typeof (song_id)=="undefined"){
+             song_id=document.querySelector("#song_id").value;
+            }
+            var url=prompt("请设置此歌曲的url","");
+            var send_msg={"order":"seturl","url":url,"id":song_id};
+            let send_msg_json=JSON.stringify(send_msg)
+            toolSocket.send(send_msg_json);
+        }
+
+
+
+/*
+        document.querySelector('#info-submit').onclick=function () {
+            const info_dom = document.querySelector('#songlist-input');
+            const info=info_dom.value;
+            toolSocket.send(info);
+            info_dom.value='';
+        }
+*/
+    </script>
+
+{% endblock %}

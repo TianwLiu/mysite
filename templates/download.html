@@ -1,0 +1,17 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>download</title>
+</head>
+<body>
+{{list}}
+**********************
+time use is {{timeuse}}
+
+{% load static%}
+<audio controls>
+    <source src="{% static file_name %}" type="{{file_type}}" />
+</audio>
+</body>
+</html>

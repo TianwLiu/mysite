@@ -16,8 +16,9 @@ class MyPlayer {
     }
     link_eventListener_to_audio(){
         this.audio.addEventListener('error',(e)=>{
-            console.info("this is error event");
-            this.buffer(this.currentplaysong_inlist);
+           this.check_currentsong();
+            console.info("this is error event,check current song ");
+
            // this.buffer(this.currentplaysong_inlist)
             //this.buffer_recent=true;
         });
@@ -31,19 +32,13 @@ class MyPlayer {
            //
         });
         this.audio.addEventListener('canplaythrough',(e)=>{
-            this.buffer(this.currentplaysong_inlist+1);
-            console.info("this is play event,music"+this
-                .currentplaysong_inlist.toString()+"完成加载,开始加载下一首");
+            this.report_currentsong();
+            console.info("this is canplaythrough event,music"+this
+                .currentplaysong_inlist.toString()+"have reported");
         });
     }
-    buffer(song_index_list){
-        let message={"order":"buffer","data":song_index_list};
-        let message_json=JSON.stringify(message);
-        if(typeof(this.socket)=="undefined") {
-            this.socket = this.init_Websocket(this);
-        }
-        this.socket.send(message_json);
-    }
+
+
     init_Websocket(player){
         var playerSocket=new WebSocket(
             'ws://'
@@ -84,10 +79,32 @@ class MyPlayer {
                 if(raw_message["error"]==this.currentplaysong_inlist){
                     this.next()
                 }
+            }else if(raw_message["message"]=="buffering"){
+                if(raw_message["buffering"]==this.currentplaysong_inlist){
+                    setTimeout(function () {
+                        player.check_currentsong();
+                    },3000);
+                }
             }
 
         }
 
+    }
+    check_currentsong(){
+        let orignal_message={"order":"check_currentsong","check_currentsong":this.currentplaysong_inlist}
+        this.send_message(orignal_message);
+    }
+    report_currentsong(){
+        let orignal_message={"order":"report_currentsong","report_currentsong":this.currentplaysong_inlist}
+        this.send_message(orignal_message);
+    }
+
+    send_message(original_message){
+        let message_json=JSON.stringify(original_message);
+        if(typeof(this.socket)=="undefined") {
+            this.socket = this.init_Websocket(this);
+        }
+        this.socket.send(message_json);
     }
 
     play(){
@@ -134,6 +151,16 @@ class MyPlayer {
             this.audio.play();
         }
     }
+    /*
+    buffer(song_index_list){
+        let message={"order":"buffer","data":song_index_list};
+        let message_json=JSON.stringify(message);
+        if(typeof(this.socket)=="undefined") {
+            this.socket = this.init_Websocket(this);
+        }
+        this.socket.send(message_json);
+    }
+    */
 
 
 }

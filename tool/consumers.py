@@ -4,23 +4,20 @@ import traceback
 
 from channels.generic.websocket import WebsocketConsumer
 from you_get.common import any_download
-from you_get.common import set_sender
 from you_get.extractor import VideoExtractor
 from tool.models import SongList,Song
 from django.core import serializers
-from ffmpy3 import FFmpeg
+from tool.audioPlayer import AudioPlayer
+
 import time
 import json
-import threading
-import os
-from you_get.util.strings import get_filename
-import shutil
-import sys
+
 
 class SearchSong(WebsocketConsumer):
 
     def connect(self):
         self.accept()
+
 
     def disconnect(self, close_code):
         pass
@@ -87,6 +84,7 @@ class UpdloadSonglist(WebsocketConsumer):
 class Player(WebsocketConsumer):
 
 
+    '''
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.waiting_for_buffer=[]
@@ -100,7 +98,7 @@ class Player(WebsocketConsumer):
         if os.path.exists("./static/media/"):
             shutil.rmtree("./static/media/")
         os.mkdir("./static/media/")
-
+    '''
 
 
     '''
@@ -136,34 +134,14 @@ class Player(WebsocketConsumer):
             self.lock_buffer_file_waiting_for_del.release()
     '''
 
-
-
-
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.audioPlayer = AudioPlayer()
 
     def connect(self):
         self.accept()
-        self.updatesonglist()
-        self.sendsongslist()
-
-
-    def updatesonglist(self):
-        self.current_songlist=None
-        self.current_songlist=[]
-        for song in Song.objects.all():
-            single_song_info={'id':song.id_list,'title':song.song_title,'singer':song.singer}
-            self.current_songlist.append(single_song_info)
-        self.current_songlist_flag_buffered=[0]*len(self.current_songlist)
-
-    def disconnect(self, code):
-
-
-        self.exit_rm_sources()
-
-
-    def exit_rm_sources(self):
-        if os.path.exists("./static/media/"):
-            shutil.rmtree("./static/media/")
-        os.mkdir("./static/media/")
+        #self.updatesonglist()
+        self.sendMessage(self.audioPlayer.getsongslist())
 
     def receive(self, text_data):
         message=json.loads(text_data)
@@ -171,14 +149,53 @@ class Player(WebsocketConsumer):
 
     def parse_message_exc(self,message):
         if message["order"]=="buffer":
-            self.buffer_song_via_index(int(message["data"]))
+            #self.sendMessage(self.audioPlayer.buffer_song_via_index(int(message["data"])))
+            pass
+        elif message["order"]=="song_list":
+            self.sendMessage(self.audioPlayer.getsongslist())
+        elif message["order"] == "report_currentsong":
+            self.sendMessage(self.audioPlayer.update_browser_currentsong(int(message["report_currentsong"])))
+        elif message["order"]=="check_currentsong":
+            self.sendMessage(self.audioPlayer.check_currentsong(int(message["check_currentsong"])))
+    def sendMessage(self,message):
+        message_json = json.dumps(message)
+        self.send(message_json)
 
+
+
+    def disconnect(self, code):
+
+        self.audioPlayer.exit_rm_sources()
+    '''
+    def updatesonglist(self):
+        self.current_songlist=None
+        self.current_songlist=[]
+        for song in Song.objects.all():
+            single_song_info={'id':song.id_list,'title':song.song_title,'singer':song.singer}
+            self.current_songlist.append(single_song_info)
+        self.current_songlist_flag_buffered=[0]*len(self.current_songlist)
+    '''
+
+
+        #self.exit_rm_sources()
+
+    '''
+    def exit_rm_sources(self):
+        if os.path.exists("./static/media/"):
+            shutil.rmtree("./static/media/")
+        os.mkdir("./static/media/")
+    '''
+
+
+
+    '''
     def get_mp3_path(self,index_currentsonglist):
         song_title_singer = self.current_songlist[index_currentsonglist]["title"] + "-" + \
                             self.current_songlist[index_currentsonglist]["singer"]
         mp3_path = "./static/media/" + song_title_singer + ".mp3"
         return mp3_path
-
+    '''
+    '''
     def buffer_song_via_index(self,index_currentsonglist):
 
         if index_currentsonglist==self.current_buffering_index:
@@ -221,10 +238,9 @@ class Player(WebsocketConsumer):
         back_message_json = json.dumps(back_message)
         self.send(back_message_json)
         return
+    '''
 
-
-
-
+    '''
     def buffer_thread_function(self):
 
         while not len(self.waiting_for_buffer)==0:
@@ -294,8 +310,8 @@ class Player(WebsocketConsumer):
                     os.remove(video_path)
             self.current_buffering_index=None
 
-
-
+    '''
+    '''
     def sendsongslist(self):
 
         #song_json = serializers.serialize('json', Song.objects.all(), fields=('id_list', 'song_title', 'singer'))
@@ -303,5 +319,5 @@ class Player(WebsocketConsumer):
         message={'type':'song_list','song_list':self.current_songlist}
         message_json=json.dumps(message)
         self.send(message_json)
-
+    '''
 

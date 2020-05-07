@@ -399,8 +399,8 @@ h1 { text-align:center }
 {% block content %}
 {% load static%}
 <h1 > uploadplaylist</h1>
-<audio id="myplayer" controls>
-    <source src="" type="audio/mp3" />
+<audio id="myplayer" controls="controls" preload="auto">
+    <source src="" type="audio/mpeg" />
 </audio>
 <br><br>
 <button type="button" onclick="player.play()">play</button> <button type="button" onclick="player.update_play()">updatePlay</button>

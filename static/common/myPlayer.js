@@ -23,16 +23,20 @@ class MyPlayer {
             //this.buffer_recent=true;
         });
         this.audio.addEventListener('ended',(e) => {
-            this.next()
+            //window.alert("ended event,next");
+            this.next();
         });
         this.audio.addEventListener('durationchange',(e)=>{
             //this.currentsong_duration=this
         });
-        this.audio.addEventListener('timeupdate',(e)=>{
+        this.audio.addEventListener('canplay',(e)=>{
            //
+            //window.alert("canplay event,next");
         });
         this.audio.addEventListener('canplaythrough',(e)=>{
+
             this.report_currentsong();
+            //window.alert("canplaythrough event,report snong");
             console.info("this is canplaythrough event,music"+this
                 .currentplaysong_inlist.toString()+"have reported");
         });
@@ -49,10 +53,10 @@ class MyPlayer {
 
         }
         playerSocket.onclose=function () {
-
+            //window.alert("socket closed")
         }
-        playerSocket.onclose=function () {
-
+        playerSocket.onerror=function () {
+           // window.alert("socket error")
         }
         playerSocket.onmessage=function (e) {
 

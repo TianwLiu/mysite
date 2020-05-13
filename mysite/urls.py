@@ -15,6 +15,8 @@ Including another URLconf
 """
 from django.contrib import admin
 from django.urls import path
+
+from mysite import settings
 from mysite.views import *
 from tool.views import index_tool,index_uploadsonglist,index_listmanager,index_player
 
@@ -31,3 +33,5 @@ urlpatterns = [
     path('tool/',index_tool),
 
 ]
+
+

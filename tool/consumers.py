@@ -3,8 +3,7 @@ import inspect
 import traceback
 
 from channels.generic.websocket import WebsocketConsumer
-from you_get.common import any_download
-from you_get.extractor import VideoExtractor
+
 from tool.models import SongList,Song
 from django.core import serializers
 from tool.audioPlayer import AudioPlayer

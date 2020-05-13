@@ -397,9 +397,9 @@ h1 { text-align:center }
 }
 {% endblock %}
 {% block content %}
-{% load static%}
+
 <h1 > uploadplaylist</h1>
-<audio id="myplayer" controls="controls" preload="auto">
+<audio id="myplayer" controls="controls" preload="auto" src="{{MEDIA_URL}}">
     <source src="" type="audio/mpeg" />
 </audio>
 <br><br>
@@ -409,7 +409,7 @@ h1 { text-align:center }
 <br><br>
 <input id="target_id"/> <button type="button" onclick="player.switch()">switch</button>
 <br>
-<script type="text/javascript" src="{% static 'common/myPlayer.js' %}" ></script>
+<script type="text/javascript" src="/static/myPlayer.js" ></script>
 
 <script>
        var player = new MyPlayer()

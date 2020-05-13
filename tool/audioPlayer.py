@@ -1,14 +1,13 @@
 
 import traceback
-from you_get.common import any_download
-from you_get.extractor import VideoExtractor
+
 from tool.models import Song
 from ffmpy3 import FFmpeg
 import time
 import json
 import threading
 import os
-from you_get.util.strings import get_filename
+from tool.youget import YouGet,time_out_Error,return_one_Error
 import shutil
 
 
@@ -17,7 +16,7 @@ class AudioPlayer():
 
         self.browser_current_song = 0
         self.current_buffering_index = None
-
+        self.entered_download_ffmpeg=[]
         self.waiting_for_buffer = []
         self.lock_waiting_for_buffer = threading.Lock()
         self.downdload_video_thread=threading.Thread(target=self.downdload_video_thread_function)
@@ -33,11 +32,11 @@ class AudioPlayer():
 
         self.buffer_file_waiting_for_del = []
         self.lock_buffer_file_waiting_for_del = threading.Lock()
+        self.debud_his=[]
 
-
-        if os.path.exists("./static/media/"):
-            shutil.rmtree("./static/media/")
-        os.mkdir("./static/media/")
+        if os.path.exists("./media/"):
+            shutil.rmtree("./media/")
+        os.mkdir("./media/")
 
         self.startSonThread()
 
@@ -49,88 +48,190 @@ class AudioPlayer():
 
     def check_currentsong(self,index):
         flag=self.current_songlist_flag_buffered[index]
+        self.lock_waiting_for_buffer.acquire()
         if flag==1: # finish_buffer
             back_message = {"type": "message", "message": "finish_buffer", "finish_buffer": index}
         elif flag==-1:# error
             back_message = {"type": "message", "message": "error", "error": index}
-        elif index == self.current_buffering_index:
+        elif index in self.entered_download_ffmpeg:
             #back_message = {"type": "message", "message": "歌曲" + str(index) + "当前正在缓冲"}
             back_message = {"type": "message", "message": "buffering","buffering": index}
         elif index in self.waiting_for_buffer:#in buffer queue
-            self.buffer_stack_update(index)
+            self.buffer_single_song(index)
             #back_message = {"type": "message", "message": "歌曲" + str(index) + "已在正在缓冲队列,现调整为最优先"}
             back_message = {"type": "message", "message": "buffering", "buffering": index}
         else:
-            self.buffer_stack_update(index)
+            self.buffer_single_song(index)
             #back_message = {"type": "message", "message": "歌曲" + str(index) + "完成进入缓冲队列,目前最优先"}
             back_message = {"type": "message", "message": "buffering", "buffering": index}
+        self.lock_waiting_for_buffer.release()
         return back_message
 
+    def buffer_single_song(self,index):
+
+
+        self.waiting_for_buffer = []
+        self.waiting_for_buffer.append(index)
+
+
     def update_browser_currentsong(self,index):
-        self.browser_current_song=index
+        self.browser_current_song = index
+        self.lock_waiting_for_buffer.acquire()
         self.buffer_stack_update(index+1)
+        self.lock_waiting_for_buffer.release()
         return {"type": "message", "message": "server received update"}
+
+
 
     def buffer_stack_update(self,index):
         max_buffer_index = index
         while max_buffer_index < index + 2 and max_buffer_index < len(self.current_songlist) - 1:
             max_buffer_index += 1
 
-        self.lock_waiting_for_buffer.acquire()
+
         self.waiting_for_buffer = []
 
         while max_buffer_index >= index:
             # pathsss = self.get_mp3_path(max_buffer_index)
-            if self.current_songlist_flag_buffered[max_buffer_index] == 0 and max_buffer_index != self.current_buffering_index:  # 0 means the song(mp3 file) has been at server
+            if self.current_songlist_flag_buffered[max_buffer_index] == 0 and max_buffer_index not in self.entered_download_ffmpeg:  # 0 means the song(mp3 file) has been at server
                 self.waiting_for_buffer.append(max_buffer_index)
             max_buffer_index -= 1
-        self.lock_waiting_for_buffer.release()
+
 
     def buffer_manager_thread_function(self):
         pass
 
+    def you_get_thread_function(self,index):
+        if Song.objects.get(id_list=index).url1:
+            arg = Song.objects.get(id_list=index).url1
+        else:
+            song_title_singer = self.current_songlist[index]["title"] + "-" + \
+                                self.current_songlist[index]["singer"]
+            arg = song_title_singer
+
+        you_get = YouGet(arg)
+        try:
+            flag = you_get.try_to_get()
+
+        except return_one_Error as e:
+            self.current_songlist_flag_buffered[index] = -1
+            print(e)
+            print("download exception:", arg)
+
+        except Exception as e:
+            self.current_songlist_flag_buffered[index] = -1
+            print(e)
+            print("download exception:", arg)
+        else:
+            if flag:
+                self.loc_waiting_for_convert.acquire()
+                self.waiting_for_convert.append({"video_path": "./media/" + you_get.file_name, "index": index})
+                self.loc_waiting_for_convert.release()
+                print("download success,waiting for convert:",arg,"-->",you_get.file_name)
+
+            else:
+                self.current_songlist_flag_buffered[index] = -1
+                print("download failed,no file name:",arg)
+
+
+        '''
+        if you_get.try_to_get():
+            if you_get.file_name:
+                self.loc_waiting_for_convert.acquire()
+                self.waiting_for_convert.append({"video_path":"./media/"+you_get.file_name,"index":index})
+                self.loc_waiting_for_convert.release()
+                print(you_get.file_name,"download finish,waiting for convert")
+            else:
+                self.current_songlist_flag_buffered[index] = -1
+                print(you_get.file_name, "download error,no name")
+        else:
+            self.current_songlist_flag_buffered[index] = -1
+            print(you_get.file_name, "download error,exception")
+        '''
     def downdload_video_thread_function(self):
         while 1:
             self.lock_waiting_for_buffer.acquire()
             if self.waiting_for_buffer:
 
-                self.current_buffering_index=self.waiting_for_buffer.pop()
+                index = self.waiting_for_buffer.pop()
+                if index not in self.entered_download_ffmpeg:
+                    self.entered_download_ffmpeg.append(index)
+                else:
+                    self.lock_waiting_for_buffer.release()
+                    time.sleep(3)
+                    continue
                 self.lock_waiting_for_buffer.release()
-                index=self.current_buffering_index
             else:
                 self.lock_waiting_for_buffer.release()
-                time.sleep(0)
+                time.sleep(3)
                 continue
 
+            thread_son=threading.Thread(target=self.you_get_thread_function,args=(index,))
+            thread_son.start()
 
-            song_title_singer = self.current_songlist[index]["title"] + "-" + \
-                                self.current_songlist[index]["singer"]
 
+            '''
             if Song.objects.get(id_list=index).url1:
-                download_url = Song.objects.get(id_list=index).url1
+                 arg= Song.objects.get(id_list=index).url1
             else:
-                download_url = "http://" + song_title_singer
+                song_title_singer = self.current_songlist[index]["title"] + "-" + \
+                                   self.current_songlist[index]["singer"]
+                arg=song_title_singer
 
-            kwargs = {'output_dir': './static/media/', 'merge': True, 'info_only': False, 'json_output': False,
-                      'caption': True,
-                      'password': None}
+
+
             try:
+                print("*****************************************")
+                print("download_url:"+download_url+"index"+str(index))
                 any_download(download_url, **kwargs)
-            except Exception as e:
-                pass
-            finally:
                 if VideoExtractor.latest_title:
-                    video_path = "./static/media/" + get_filename(
+                    video_path = "./media/" + get_filename(
                         VideoExtractor.latest_title) + "." + VideoExtractor.latest_ext
+
                     if os.path.exists(video_path):
                         self.loc_waiting_for_convert.acquire()
                         self.waiting_for_convert.append({"video_path":video_path,"index":index})
+                        print("get from you-get:" + video_path + "index" + str(index))
+                        self.debud_his.append({"video_path":video_path,"index":index})
                         self.loc_waiting_for_convert.release()
                     else:
+                        print("********************************************************")
+                        print(download_url + "download成功运行，但本地访问失败,index:" + str(index))
+                        print("$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$")
                         self.current_songlist_flag_buffered[index] = -1
-                else:
-                    self.current_songlist_flag_buffered[index]=-1
+            except Exception as e:
+                print("********************************************************")
+                print(download_url+"download失败,index:"+str(index))
+                traceback.print_exc()
+                print("$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$")
+                self.current_songlist_flag_buffered[index] = -1
+            finally:
+                VideoExtractor.latest_title = None
+                VideoExtractor.latest_ext = None
+            '''
 
+
+    def ffmpeg_thread_function(self,task_unit):
+        index = task_unit["index"]
+        mp3_path = self.get_mp3_path(index)
+        video_path = task_unit["video_path"]
+        assert os.path.exists(video_path)
+        ff = FFmpeg(inputs={video_path: None},
+                    outputs={mp3_path: "-vn -ar 44100 -ac 2 -ab 192 -f mp3 -y -v 8"})
+        ff.cmd
+        print("convert try:",mp3_path)
+        try:
+            ff.run()
+        except Exception:
+            self.current_songlist_flag_buffered[index] = -1
+            print("convert exception",mp3_path)
+        else:
+            if os.path.exists(mp3_path):
+                self.current_songlist_flag_buffered[index] = 1
+                print("convert finish",mp3_path )
+            else:
+                self.current_songlist_flag_buffered[index] = -1
+                print("convert fail,no get planned mp3 file in specific path",mp3_path)
 
 
     def convert_to_mp3_thread_function(self):
@@ -141,13 +242,18 @@ class AudioPlayer():
                 self.loc_waiting_for_convert.release()
             else:
                 self.loc_waiting_for_convert.release()
-                time.sleep(0)
+                time.sleep(1)
                 continue
+
+            thread_son = threading.Thread(target=self.ffmpeg_thread_function, args=(task_unit,))
+            thread_son.start()
+
+            '''
             index=task_unit["index"]
             mp3_path=self.get_mp3_path(index)
             video_path=task_unit["video_path"]
             ff = FFmpeg(inputs={video_path: None},
-                        outputs={mp3_path: "-vn -ar 44100 -ac 2 -ab 192 -f mp3"})
+                        outputs={mp3_path: "-vn -ar 44100 -ac 2 -ab 192 -f mp3 -y -v 8"})
             ff.cmd
             try:
                 ff.run()
@@ -161,7 +267,7 @@ class AudioPlayer():
                 #if os.path.exists(video_path):
                  #   os.remove(video_path)
 
-
+            '''
 
 
 
@@ -182,9 +288,9 @@ class AudioPlayer():
 
 
     def exit_rm_sources(self):
-        if os.path.exists("./static/media/"):
-            shutil.rmtree("./static/media/")
-        os.mkdir("./static/media/")
+        if os.path.exists("./media/"):
+            shutil.rmtree("./media/")
+        os.mkdir("./media/")
 
 
 
@@ -192,10 +298,10 @@ class AudioPlayer():
     def get_mp3_path(self, index_currentsonglist):
         song_title_singer = self.current_songlist[index_currentsonglist]["title"] + "-" + \
                             self.current_songlist[index_currentsonglist]["singer"]
-        mp3_path = "./static/media/" + song_title_singer + ".mp3"
+        mp3_path = "./media/" + song_title_singer + ".mp3"
         return mp3_path
 
-
+    '''
     def buffer_song_via_index(self, index_currentsonglist):
         if index_currentsonglist == self.current_buffering_index:
             back_message = {"type": "message", "message": "歌曲" + str(index_currentsonglist) + "当前正在缓冲"}
@@ -227,7 +333,7 @@ class AudioPlayer():
             self.download_thread.start()
 
         return back_message
-
+'''
 
 '''
     def buffer_thread_function(self):
